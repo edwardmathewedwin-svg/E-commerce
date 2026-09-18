@@ -38,6 +38,7 @@ function App() {
   const [selectedGame, setSelectedGame] = useState<Product | null>(null);
   const [showAllGames, setShowAllGames] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<Product | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [toast, setToast] = useState({ message: '', show: false });
 
   const loadLibrary = useCallback(async () => {
@@ -310,10 +311,26 @@ function App() {
           }}
           cartCount={cartCount}
           user={user}
+          isOpen={mobileSidebarOpen}
+          onClose={() => setMobileSidebarOpen(false)}
         />
       </div>
 
-      <main className="flex-1 h-screen overflow-y-auto px-8 sm:px-12 py-6 z-10">
+      <main className="flex-1 h-screen overflow-y-auto px-4 sm:px-12 py-6 z-10">
+        {/* Mobile Header Bar with Hamburger Menu Trigger */}
+        <div className="flex items-center justify-between mb-6 md:hidden">
+          <button 
+            onClick={() => setMobileSidebarOpen(true)}
+            className="p-2 rounded-xl glass-card border border-base-border text-neon-pink cursor-pointer"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="font-bold tracking-wider neon-text-pink">NEXUS</span>
+          <div className="w-10" />
+        </div>
+
         {activeNav === 'store' && (
           <>
             {selectedGame ? (
@@ -357,7 +374,6 @@ function App() {
                 </div>
               </div>
             ) : showAllGames ? (
-              /* DEDICATED FULL CATALOG VIEW WHEN "VIEW ALL" IS CLICKED */
               <div className="space-y-6 w-full animate-fade-in">
                 <div className="flex items-center justify-between">
                   <button
