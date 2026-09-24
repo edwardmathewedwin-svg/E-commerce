@@ -110,9 +110,21 @@ export async function fetchProducts(): Promise<Product[]> {
 // ──────────────────────────────────────────────────────────
 
 export async function fetchLibraryGames(): Promise<Product[]> {
+  // 1. Get the current logged-in user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error("No authenticated user found for library fetch.");
+    return [];
+  }
+
+  // 2. Fetch order details joined with orders, filtered strictly by the user's ID
   const { data, error } = await supabase
     .from('order_details')
-    .select('products:product_id (*)');
+    .select(`
+      products:product_id (*),
+      orders!inner (user_id)
+    `)
+    .eq('orders.user_id', user.id);
 
   if (error) {
     console.error("Failed to fetch library games:", error.message);
@@ -122,13 +134,16 @@ export async function fetchLibraryGames(): Promise<Product[]> {
   const uniqueProductsMap = new Map();
   (data || []).forEach((item: any) => {
     const p = item.products;
-    if (p && !uniqueProductsMap.has(p.product_id)) {
-      uniqueProductsMap.set(p.product_id, {
-        id: p.product_id,
-        name: p.product_name,
+    if (p && !uniqueProductsMap.has(p.product_id || p.id)) {
+      const prodId = p.product_id || p.id;
+      uniqueProductsMap.set(prodId, {
+        id: prodId,
+        name: p.product_name || p.name,
+        description: p.description,
         price: p.price,
-        image: p.image_url,
-        image_url: p.image_url,
+        image: p.image_url || p.image,
+        image_url: p.image_url || p.image,
+        banner_url: p.banner_url,
         category_id: p.category_id,
       });
     }
@@ -148,7 +163,6 @@ export async function deleteLibraryGame(productId: number | string): Promise<voi
     throw error;
   }
 }
-
 // ──────────────────────────────────────────────────────────
 // ORDERS / ACTIVITY FEED
 // ──────────────────────────────────────────────────────────
