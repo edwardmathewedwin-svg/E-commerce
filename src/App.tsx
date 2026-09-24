@@ -215,10 +215,16 @@ function App() {
     const totalAmount = validCartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
     try {
-      // 1. Insert into orders table (saving customer reference)
+      // 1. Get the authenticated user's actual Supabase Auth ID
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        throw new Error("Authentication error. Please log in again.");
+      }
+
+      // 2. Insert into orders table using the correct authUser.id
       const { data: orderData, error: orderError } = await supabase.from('orders').insert([
         {
-          customer_id: user.id || null,
+          customer_id: authUser.id,
           order_date: new Date().toISOString(),
           total_amount: totalAmount,
           status: 'Completed'
@@ -227,7 +233,7 @@ function App() {
 
       if (orderError) throw orderError;
 
-      // 2. Insert into order_details table (saving game name & customer name)
+      // 3. Insert into order_details table
       const orderDetailsPayload = validCartItems.map(item => ({
         order_id: orderData.order_id,
         product_id: item.product.id,
@@ -240,7 +246,7 @@ function App() {
       const { error: detailsError } = await supabase.from('order_details').insert(orderDetailsPayload);
       if (detailsError) throw detailsError;
 
-      // 3. Insert into payments table with "Payment Completed" status
+      // 4. Insert into payments table
       const { error: paymentError } = await supabase.from('payments').insert([
         {
           order_id: orderData.order_id,
