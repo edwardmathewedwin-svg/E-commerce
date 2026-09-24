@@ -117,14 +117,14 @@ export async function fetchLibraryGames(): Promise<Product[]> {
     return [];
   }
 
-  // 2. Fetch order details joined with orders, filtered strictly by the user's ID
+  // 2. Fetch order details joined with orders, filtered strictly by the customer_id
   const { data, error } = await supabase
     .from('order_details')
     .select(`
       products:product_id (*),
-      orders!inner (user_id)
+      orders!inner (customer_id)
     `)
-    .eq('orders.user_id', user.id);
+    .eq('orders.customer_id', user.id);
 
   if (error) {
     console.error("Failed to fetch library games:", error.message);
