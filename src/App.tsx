@@ -199,7 +199,7 @@ function App() {
   }, [gameToDelete]);
 
   const handleCheckout = useCallback(async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !user) return;
 
     const validCartItems = cart.filter(
       (item) => !libraryGames.some((game) => game.id === item.product.id)
@@ -215,8 +215,10 @@ function App() {
     const totalAmount = validCartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
     try {
+      // 1. Insert into orders table (saving customer reference)
       const { data: orderData, error: orderError } = await supabase.from('orders').insert([
         {
+          customer_id: user.id || null,
           order_date: new Date().toISOString(),
           total_amount: totalAmount,
           status: 'Completed'
@@ -225,16 +227,31 @@ function App() {
 
       if (orderError) throw orderError;
 
+      // 2. Insert into order_details table (saving game name & customer name)
       const orderDetailsPayload = validCartItems.map(item => ({
         order_id: orderData.order_id,
         product_id: item.product.id,
         product_name: item.product.name,
+        customer_name: user.name || user.email,
         quantity: item.quantity,
         unit_price: item.product.price
       }));
 
       const { error: detailsError } = await supabase.from('order_details').insert(orderDetailsPayload);
       if (detailsError) throw detailsError;
+
+      // 3. Insert into payments table with "Payment Completed" status
+      const { error: paymentError } = await supabase.from('payments').insert([
+        {
+          order_id: orderData.order_id,
+          payment_date: new Date().toISOString(),
+          amount: totalAmount,
+          payment_method: 'Online Card',
+          payment_status: 'Payment Completed'
+        }
+      ]);
+
+      if (paymentError) throw paymentError;
 
       setCart([]);
       setToast({ message: 'Purchase successful! Games added to your Library.', show: true });
@@ -243,7 +260,7 @@ function App() {
     } catch (err: any) {
       setToast({ message: `Checkout failed: ${err.message}`, show: true });
     }
-  }, [cart, libraryGames, loadOrders]);
+  }, [cart, libraryGames, loadOrders, user]);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
